@@ -69,8 +69,21 @@ search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<location> const& destinations,
                           search_profile const& profile, search_direction dir,
                           bool allow_expansion) {
+  return find_routes(g, start, destinations, profile, dir, allow_expansion, nullptr);
+}
+
+search_result find_routes(routing_graph const& g, location const& start,
+                          std::vector<location> const& destinations,
+                          search_profile const& profile, search_direction dir,
+                          bool allow_expansion,
+                          std::chrono::time_point<std::chrono::steady_clock>* start_t) {
   search_result result;
-  auto const t_start = timing_now();
+  std::chrono::time_point<std::chrono::steady_clock> t_start;
+  if(start_t == nullptr) {
+    t_start = timing_now();
+  } else {
+    t_start = *start_t;
+  }
   mapped_pt mapped_start = {
       start, nearest_points(g, start, initial_max_pt_query,
                             initial_max_pt_count, initial_max_pt_dist)};
@@ -129,6 +142,119 @@ search_result find_routes(routing_graph const& g, location const& start,
   postprocess_result(result, profile);
   result.stats_.d_total_ = ms_since(t_start);
   return result;
+}
+
+// find routes with locations as destination and an osm-id of a given type as start
+search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
+                          osm_type const& type,
+                          std::vector<location> const& destinations,
+                          search_profile const& profile, search_direction dir,
+                          bool allow_expansion) {
+  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
+  std::optional<location> start;
+  switch (type) {
+    case osm_type::NODE:
+      start = g.find_osm_node(start_id);
+      break;
+    case osm_type::AREA:
+      start = g.find_osm_area(start_id);
+      break;
+    case osm_type::EDGE:
+      start = g.find_osm_edge(start_id);
+      break;
+    default:
+      start = g.find_osm_id(start_id);
+  }
+
+  if(start.has_value()) {
+    return find_routes(g, start.value(), destinations, profile, dir, allow_expansion,
+                       &t_start);
+  }
+  return find_routes(g, location(), destinations, profile, dir, allow_expansion,
+                     &t_start);
+}
+
+// find routes with a location as start and osm-ids as destinations
+search_result find_routes(routing_graph const&g, location const& start,
+                          std::vector<osm_type> const& end_type,
+                          std::vector<std::int64_t> const& destination_ids,
+                          search_profile const& profile, search_direction dir,
+                          bool allow_expansion) {
+  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
+  std::vector<location> destinations;
+  auto it = destinations.begin();
+  auto type_it = end_type.begin();
+  for (std::int64_t destination_id : destination_ids) {
+    std::optional<location> id;
+    switch (*(type_it++)._Ptr) {
+      case osm_type::NODE:
+        id = g.find_osm_node(destination_id);
+        break;
+      case osm_type::AREA:
+        id = g.find_osm_area(destination_id);
+        break;
+      case osm_type::EDGE:
+        id = g.find_osm_edge(destination_id);
+        break;
+      default:
+        id = g.find_osm_id(destination_id);
+    }
+    if(id.has_value()) {
+      it = destinations.insert(it, id.value());
+    }
+  }
+  return find_routes(g, start, destinations, profile, dir, allow_expansion, &t_start);
+}
+
+// find routes with osm-ids, as start and destinations
+search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
+                          osm_type const& start_type,
+                          std::vector<osm_type> const& end_type,
+                          std::vector<std::int64_t> destination_ids,
+                          search_profile const& profile, search_direction dir,
+                          bool allow_expansion) {
+  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
+  std::vector<location> destinations;
+  auto it = destinations.begin();
+  auto type_it = end_type.begin();
+  for (std::int64_t const& destination_id : destination_ids) {
+    std::optional<location> id;
+    switch (*(type_it++)._Ptr) {
+      case osm_type::NODE:
+        id = g.find_osm_node(destination_id);
+        break;
+      case osm_type::AREA:
+        id = g.find_osm_area(destination_id);
+        break;
+      case osm_type::EDGE:
+        id = g.find_osm_edge(destination_id);
+        break;
+      default:
+        id = g.find_osm_id(destination_id);
+    }
+    if(id.has_value()) {
+      it = destinations.insert(it, id.value());
+    }
+  }
+  std::optional<location> start;
+  switch (start_type) {
+    case osm_type::NODE:
+      start = g.find_osm_node(start_id);
+      break;
+    case osm_type::AREA:
+      start = g.find_osm_area(start_id);
+      break;
+    case osm_type::EDGE:
+      start = g.find_osm_edge(start_id);
+      break;
+    default:
+      start = g.find_osm_id(start_id);
+  }
+  if(start.has_value()) {
+    return find_routes(g, start.value(), destinations, profile, dir, allow_expansion,
+                       &t_start);
+  }
+  return find_routes(g, location(), destinations, profile, dir, allow_expansion, &t_start);
 }
 
 }  // namespace ppr::routing
