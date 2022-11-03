@@ -68,13 +68,6 @@ constexpr double expanded_max_pt_dist = 300;
 search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<location> const& destinations,
                           search_profile const& profile, search_direction dir,
-                          bool allow_expansion) {
-  return find_routes(g, start, destinations, profile, dir, allow_expansion, nullptr);
-}
-
-search_result find_routes(routing_graph const& g, location const& start,
-                          std::vector<location> const& destinations,
-                          search_profile const& profile, search_direction dir,
                           bool allow_expansion,
                           std::chrono::time_point<std::chrono::steady_clock>* start_t) {
   search_result result;
@@ -210,7 +203,7 @@ search_result find_routes(routing_graph const&g, location const& start,
 search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
                           osm_type const& start_type,
                           std::vector<osm_type> const& end_type,
-                          std::vector<std::int64_t> destination_ids,
+                          std::vector<std::int64_t> const& destination_ids,
                           search_profile const& profile, search_direction dir,
                           bool allow_expansion) {
   std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();

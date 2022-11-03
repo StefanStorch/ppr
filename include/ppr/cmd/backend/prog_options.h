@@ -38,7 +38,7 @@ public:
   std::string cert_path_{"::dev::"};
   std::string priv_key_path_{"::dev::"};
   std::string dh_path_{"::dev::"};
-  std::string static_file_path_;
+  std::string static_file_path_{"web"};
   int threads_{static_cast<int>(std::thread::hardware_concurrency())};
   std::size_t edge_rtree_max_size_{1024UL * 1024 * 1024 * 3};
   std::size_t area_rtree_max_size_{1024UL * 1024 * 1024};

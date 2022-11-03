@@ -61,6 +61,10 @@ route_request parse_route_request(web_server::http_req_t const& req) {
   auto doc = parse_json(req.body());
   get_location(r.start_, doc, "start");
   get_location(r.destination_, doc, "destination");
+  get_int64(r.osm_id_start_, doc, "start_id");
+  get_int64(r.osm_id_destination_, doc, "destination_id");
+  get_type(r.start_type_, doc, "start_type");
+  get_type(r.destination_type_, doc, "destination_type");
   get_profile(r.profile_, doc, "profile");
   get_bool(r.include_infos_, doc, "include_infos");
   get_bool(r.include_full_path_, doc, "include_full_path");
@@ -108,14 +112,31 @@ struct http_server::impl {
   void handle_route(web_server::http_req_t const& req,
                     web_server::http_res_cb_t const& cb) {
     auto const r = parse_route_request(req);
-    if (!r.start_.valid() || !r.destination_.valid()) {
+    if ((!r.start_.valid() && r.osm_id_start_ == -1) ||
+        (!r.destination_.valid() && r.osm_id_destination_ == -1)) {
       return cb(json_response(
           req, R"({"error": "Missing or invalid start/destination locations"})",
           http::status::bad_request));
     }
-
-    auto const result =
-        find_routes(graph_, r.start_, {r.destination_}, r.profile_);
+    search_result result;
+    if (r.start_.valid()) {
+      if (r.destination_.valid()) {
+        result = find_routes(graph_, r.start_,
+                             {r.destination_}, r.profile_);
+      } else {
+        result = find_routes(graph_, r.start_, {r.destination_type_},
+                             {r.osm_id_destination_}, r.profile_);
+      }
+    } else {
+      if (r.destination_.valid()) {
+        result = find_routes(graph_, r.osm_id_start_, r.start_type_,
+                             {r.destination_}, r.profile_);
+      } else {
+        result = find_routes(graph_, r.osm_id_start_, r.start_type_,
+                             {r.destination_type_}, {r.osm_id_destination_},
+                             r.profile_);
+      }
+    }
     return cb(json_response(req, routes_to_route_response(result, r)));
   }
 

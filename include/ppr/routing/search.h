@@ -40,31 +40,29 @@ search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<location> const& destinations,
                           search_profile const& profile,
                           search_direction dir = search_direction::FWD,
-                          bool allow_expansion = true);
-
-search_result find_routes(routing_graph const& g, location const& start,
-                          std::vector<location> const& destinations,
-                          search_profile const& profile, search_direction dir,
-                          bool allow_expansion,
-                          std::chrono::time_point<std::chrono::steady_clock>* start_t);
+                          bool allow_expansion = true,
+                          std::chrono::time_point<std::chrono::steady_clock>* start_t = nullptr);
 
 search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
                           osm_type const& type,
                           std::vector<location> const& destinations,
-                          search_profile const& profile, search_direction dir,
-                          bool allow_expansion);
+                          search_profile const& profile,
+                          search_direction dir = search_direction::FWD,
+                          bool allow_expansion = true);
 
 search_result find_routes(routing_graph const&g, location const& start,
                           std::vector<osm_type> const& end_type,
                           std::vector<std::int64_t> const& destination_ids,
-                          search_profile const& profile, search_direction dir,
-                          bool allow_expansion);
+                          search_profile const& profile,
+                          search_direction dir = search_direction::FWD,
+                          bool allow_expansion = true);
 
 search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
                           osm_type const& start_type,
                           std::vector<osm_type> const& end_type,
-                          std::vector<std::int64_t> destination_ids,
-                          search_profile const& profile, search_direction dir,
-                          bool allow_expansion);
+                          std::vector<std::int64_t> const& destination_ids,
+                          search_profile const& profile,
+                          search_direction dir = search_direction::FWD,
+                          bool allow_expansion = true);
 
 }  // namespace ppr::routing
