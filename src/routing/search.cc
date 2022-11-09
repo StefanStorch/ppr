@@ -68,15 +68,9 @@ constexpr double expanded_max_pt_dist = 300;
 search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<location> const& destinations,
                           search_profile const& profile, search_direction dir,
-                          bool allow_expansion,
-                          std::chrono::time_point<std::chrono::steady_clock>* start_t) {
+                          bool allow_expansion) {
   search_result result;
-  std::chrono::time_point<std::chrono::steady_clock> t_start;
-  if(start_t == nullptr) {
-    t_start = timing_now();
-  } else {
-    t_start = *start_t;
-  }
+  auto t_start = timing_now();
   mapped_pt mapped_start = {
       start, nearest_points(g, start, initial_max_pt_query,
                             initial_max_pt_count, initial_max_pt_dist)};
@@ -143,28 +137,42 @@ search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
                           std::vector<location> const& destinations,
                           search_profile const& profile, search_direction dir,
                           bool allow_expansion) {
-  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
-  std::optional<location> start;
-  switch (type) {
-    case osm_type::NODE:
-      start = g.find_osm_node(start_id);
-      break;
-    case osm_type::AREA:
-      start = g.find_osm_area(start_id);
-      break;
-    case osm_type::EDGE:
-      start = g.find_osm_edge(start_id);
-      break;
-    default:
-      start = g.find_osm_id(start_id);
+  auto t_start = timing_now();
+  search_result result;
+  auto start = find_start(g, start_id, type);
+  mapped_pt mapped_start = {start.input_, {start}};
+  auto const t_after_start = timing_now();
+  result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
+  std::vector<mapped_pt> mapped_goals;
+  mapped_goals.reserve(destinations.size());
+  std::transform(
+      begin(destinations), end(destinations), std::back_inserter(mapped_goals),
+      [&](location const& loc) {
+        return mapped_pt{
+            loc, nearest_points(g, loc, initial_max_pt_query,
+                                initial_max_pt_count, initial_max_pt_dist)};
+      });
+  auto const t_after_dest = timing_now();
+  result.stats_.d_destination_pts_ = ms_between(t_after_start, t_after_dest);
+  // 1st attempt: only nearest start + goal points
+  find_routes(result, mapped_start, mapped_goals, profile, dir);
+  if (allow_expansion && !all_goals_reached(result)) {
+    // 2nd attempt: expand goal points
+    auto const t_before_expand_dest = timing_now();
+    for (std::size_t i = 0; i < destinations.size(); i++) {
+      if (result.routes_[i].empty()) {
+        mapped_goals[i].second =
+            nearest_points(g, destinations[i], expanded_max_pt_query,
+                           expanded_max_pt_count, expanded_max_pt_dist);
+        result.stats_.destination_pts_extended_++;
+      }
+    }
+    result.stats_.d_destination_pts_extended_ =
+        ms_since(t_before_expand_dest);
+    find_routes(result, mapped_start, mapped_goals, profile, dir);
   }
-
-  if(start.has_value()) {
-    return find_routes(g, start.value(), destinations, profile, dir, allow_expansion,
-                       &t_start);
-  }
-  return find_routes(g, location(), destinations, profile, dir, allow_expansion,
-                     &t_start);
+  result.stats_.d_total_ = ms_since(t_start);
+  return result;
 }
 
 // find routes with a location as start and osm-ids as destinations
@@ -173,30 +181,34 @@ search_result find_routes(routing_graph const&g, location const& start,
                           std::vector<std::int64_t> const& destination_ids,
                           search_profile const& profile, search_direction dir,
                           bool allow_expansion) {
-  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
-  std::vector<location> destinations;
-  auto it = destinations.begin();
-  auto type_it = end_type.begin();
-  for (std::int64_t destination_id : destination_ids) {
-    std::optional<location> id;
-    switch (*(type_it++)._Ptr) {
-      case osm_type::NODE:
-        id = g.find_osm_node(destination_id);
-        break;
-      case osm_type::AREA:
-        id = g.find_osm_area(destination_id);
-        break;
-      case osm_type::EDGE:
-        id = g.find_osm_edge(destination_id);
-        break;
-      default:
-        id = g.find_osm_id(destination_id);
-    }
-    if(id.has_value()) {
-      it = destinations.insert(it, id.value());
-    }
+  auto t_start = timing_now();
+  search_result result;
+  mapped_pt mapped_start = {
+      start, nearest_points(g, start, initial_max_pt_query,
+                            initial_max_pt_count, initial_max_pt_dist)};
+  auto const t_after_start = timing_now();
+  result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
+  auto goals = find_destinations(g, end_type, destination_ids);
+  std::vector<mapped_pt> mapped_goals;
+  for(auto const& goal : goals) {
+    mapped_goals.emplace_back(mapped_pt{goal.input_, {goal}});
   }
-  return find_routes(g, start, destinations, profile, dir, allow_expansion, &t_start);
+  auto const t_after_dest = timing_now();
+  result.stats_.d_destination_pts_ = ms_between(t_after_start, t_after_dest);
+  // 1st attempt: only nearest start + goal points
+  find_routes(result, mapped_start, mapped_goals, profile, dir);
+  if (allow_expansion && !all_goals_reached(result)) {
+    // 2nd attempt: expand start point
+    auto const t_before_expand_start = timing_now();
+    mapped_start.second =
+        nearest_points(g, start, expanded_max_pt_query, expanded_max_pt_count,
+                       expanded_max_pt_dist);
+    result.stats_.start_pts_extended_++;
+    result.stats_.d_start_pts_extended_ = ms_since(t_before_expand_start);
+    find_routes(result, mapped_start, mapped_goals, profile, dir);
+  }
+  result.stats_.d_total_ = ms_since(t_start);
+  return result;
 }
 
 // find routes with osm-ids, as start and destinations
@@ -204,50 +216,74 @@ search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
                           osm_type const& start_type,
                           std::vector<osm_type> const& end_type,
                           std::vector<std::int64_t> const& destination_ids,
-                          search_profile const& profile, search_direction dir,
-                          bool allow_expansion) {
-  std::chrono::time_point<std::chrono::steady_clock> t_start = timing_now();
-  std::vector<location> destinations;
-  auto it = destinations.begin();
-  auto type_it = end_type.begin();
-  for (std::int64_t const& destination_id : destination_ids) {
-    std::optional<location> id;
-    switch (*(type_it++)._Ptr) {
-      case osm_type::NODE:
-        id = g.find_osm_node(destination_id);
-        break;
-      case osm_type::AREA:
-        id = g.find_osm_area(destination_id);
-        break;
-      case osm_type::EDGE:
-        id = g.find_osm_edge(destination_id);
-        break;
-      default:
-        id = g.find_osm_id(destination_id);
-    }
-    if(id.has_value()) {
-      it = destinations.insert(it, id.value());
-    }
+                          search_profile const& profile, search_direction dir) {
+  auto t_start = timing_now();
+  search_result result;
+  auto start = find_start(g, start_id, start_type);
+  mapped_pt mapped_start = {start.input_, {start}};
+  auto const t_after_start = timing_now();
+  result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
+  auto goals = find_destinations(g, end_type, destination_ids);
+  std::vector<mapped_pt> mapped_goals;
+  for(auto const& goal : goals) {
+    mapped_goals.emplace_back(mapped_pt{goal.input_, {goal}});
   }
-  std::optional<location> start;
+  auto const t_after_dest = timing_now();
+  result.stats_.d_destination_pts_ = ms_between(t_after_start, t_after_dest);
+  // 1st attempt: only nearest start + goal points
+  find_routes(result, mapped_start, mapped_goals, profile, dir);
+  result.stats_.d_total_ = ms_since(t_start);
+  return result;
+}
+
+input_pt find_start(routing_graph const& g, std::int64_t const& start_id,
+                    osm_type const& start_type) {
+  area* area;
+  edge* edge;
   switch (start_type) {
     case osm_type::NODE:
-      start = g.find_osm_node(start_id);
-      break;
+      return input_pt{g.find_osm_node(start_id)};
     case osm_type::AREA:
-      start = g.find_osm_area(start_id);
-      break;
+      area = g.find_osm_area(start_id);
+      return input_pt{area->get_middle(), area};
     case osm_type::EDGE:
-      start = g.find_osm_edge(start_id);
-      break;
-    default:
-      start = g.find_osm_id(start_id);
+      edge = g.find_osm_edge(start_id);
+      return nearest_pt_on_edge(edge, edge->path_[0]);
+    default: break;
   }
-  if(start.has_value()) {
-    return find_routes(g, start.value(), destinations, profile, dir, allow_expansion,
-                       &t_start);
+  return {};
+}
+
+std::vector<input_pt> find_destinations(routing_graph const& g,
+                                        std::vector<osm_type> const& end_type,
+                                        std::vector<std::int64_t> const& destination_ids) {
+  std::vector<input_pt> destinations{};
+  area* area;
+  edge* edge;
+  input_pt mapped_goal;
+  auto type_it = end_type.begin();
+  for (std::int64_t destination_id : destination_ids) {
+    switch (*(type_it++)._Ptr) {
+      case osm_type::NODE:
+        destinations.emplace_back(input_pt{g.find_osm_node(destination_id)});
+        break;
+      case osm_type::AREA:
+        area = g.find_osm_area(destination_id);
+        destinations.emplace_back(input_pt{area->get_middle(), area});
+        break;
+      case osm_type::EDGE:
+        edge = g.find_osm_edge(destination_id);
+        destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+        break;
+      default:
+        destinations.emplace_back(input_pt{g.find_osm_node(destination_id)});
+        area = g.find_osm_area(destination_id);
+        destinations.emplace_back(input_pt{area->get_middle(), area});
+        edge = g.find_osm_edge(destination_id);
+        destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+    }
   }
-  return find_routes(g, location(), destinations, profile, dir, allow_expansion, &t_start);
+  return destinations;
 }
 
 }  // namespace ppr::routing

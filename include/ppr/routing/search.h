@@ -9,6 +9,7 @@
 #include "ppr/routing/route.h"
 #include "ppr/routing/search_profile.h"
 #include "ppr/routing/statistics.h"
+#include "ppr/routing/input_pt.h"
 
 namespace ppr::routing {
 
@@ -40,8 +41,7 @@ search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<location> const& destinations,
                           search_profile const& profile,
                           search_direction dir = search_direction::FWD,
-                          bool allow_expansion = true,
-                          std::chrono::time_point<std::chrono::steady_clock>* start_t = nullptr);
+                          bool allow_expansion = true);
 
 search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
                           osm_type const& type,
@@ -50,19 +50,25 @@ search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
                           search_direction dir = search_direction::FWD,
                           bool allow_expansion = true);
 
-search_result find_routes(routing_graph const&g, location const& start,
+search_result find_routes(routing_graph const& g, location const& start,
                           std::vector<osm_type> const& end_type,
                           std::vector<std::int64_t> const& destination_ids,
                           search_profile const& profile,
                           search_direction dir = search_direction::FWD,
                           bool allow_expansion = true);
 
-search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
+search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
                           osm_type const& start_type,
                           std::vector<osm_type> const& end_type,
                           std::vector<std::int64_t> const& destination_ids,
                           search_profile const& profile,
-                          search_direction dir = search_direction::FWD,
-                          bool allow_expansion = true);
+                          search_direction dir = search_direction::FWD);
+
+std::vector<input_pt> find_destinations(routing_graph const& g,
+                                        std::vector<osm_type> const& end_type,
+                                        std::vector<std::int64_t> const& destination_ids);
+
+input_pt find_start(routing_graph const& g, std::int64_t const& start_id,
+                    osm_type const& start_type);
 
 }  // namespace ppr::routing

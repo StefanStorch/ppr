@@ -73,6 +73,11 @@ struct area {
     return obstacles;
   }
 
+  location get_middle() const {
+    auto point_ = boost::geometry::return_centroid<point, area_polygon_t>(get_outer_polygon());
+    return point_.location_;
+  }
+
   // debug code
   unsigned count_mapped_nodes() const {
     unsigned c = 0;
