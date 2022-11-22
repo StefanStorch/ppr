@@ -22,8 +22,7 @@ struct input_pt {
         nearest_pt_(node->location_),
         nearest_edge_(node->in_edges_[0]),
         in_area_(nullptr),
-        outside_of_area_(false),
-        start_node_(node) {}
+        outside_of_area_(false) {}
 
   explicit input_pt(location input, area const* in_area = nullptr)
       : input_(input),
@@ -40,7 +39,6 @@ struct input_pt {
   location nearest_pt_{};
   edge const* nearest_edge_{nullptr};
   area const* in_area_{nullptr};
-  node const* start_node_{nullptr};
   bool outside_of_area_{false};
   data::vector<location> from_path_;
   data::vector<location> to_path_;

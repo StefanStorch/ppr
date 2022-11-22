@@ -240,7 +240,7 @@ target_compile_options(ppr-benchmark PRIVATE ${ppr-compile-flags})
 target_compile_definitions(ppr-benchmark PRIVATE ${ppr-compile-definitions})
 
 ################################
-# id-searcher
+# id-searcher executable
 ################################
 file(GLOB_RECURSE ppr-id-searcher-files
   src/cmd/id-searcher/*.cc

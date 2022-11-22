@@ -140,6 +140,10 @@ search_result find_routes(routing_graph const& g, std::int64_t const& start_id,
   auto t_start = timing_now();
   search_result result;
   auto start = find_start(g, start_id, type);
+  if(!start) {
+    result.stats_.d_total_ = ms_since(t_start);
+    return result;
+  }
   mapped_pt mapped_start = {start.input_, {start}};
   auto const t_after_start = timing_now();
   result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
@@ -189,6 +193,10 @@ search_result find_routes(routing_graph const&g, location const& start,
   auto const t_after_start = timing_now();
   result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
   auto goals = find_destinations(g, end_type, destination_ids);
+  if (goals.empty()) {
+    result.stats_.d_total_ = ms_since(t_start);
+    return result;
+  }
   std::vector<mapped_pt> mapped_goals;
   for(auto const& goal : goals) {
     mapped_goals.emplace_back(mapped_pt{goal.input_, {goal}});
@@ -220,10 +228,18 @@ search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
   auto t_start = timing_now();
   search_result result;
   auto start = find_start(g, start_id, start_type);
+  if(!start) {
+    result.stats_.d_total_ = ms_since(t_start);
+    return result;
+  }
   mapped_pt mapped_start = {start.input_, {start}};
   auto const t_after_start = timing_now();
   result.stats_.d_start_pts_ = ms_between(t_start, t_after_start);
   auto goals = find_destinations(g, end_type, destination_ids);
+  if (goals.empty()) {
+    result.stats_.d_total_ = ms_since(t_start);
+    return result;
+  }
   std::vector<mapped_pt> mapped_goals;
   for(auto const& goal : goals) {
     mapped_goals.emplace_back(mapped_pt{goal.input_, {goal}});
@@ -240,16 +256,36 @@ input_pt find_start(routing_graph const& g, std::int64_t const& start_id,
                     osm_type const& start_type) {
   area* area;
   edge* edge;
+  node* node;
   switch (start_type) {
     case osm_type::NODE:
-      return input_pt{g.find_osm_node(start_id)};
+      node = g.find_osm_node(start_id);
+      if (node != nullptr) {
+        return input_pt{node};
+      }
     case osm_type::AREA:
       area = g.find_osm_area(start_id);
-      return input_pt{area->get_middle(), area};
+      if (area != nullptr) {
+        return input_pt{area->get_middle(), area};
+      }
     case osm_type::EDGE:
       edge = g.find_osm_edge(start_id);
-      return nearest_pt_on_edge(edge, edge->path_[0]);
-    default: break;
+      if (edge != nullptr) {
+        return nearest_pt_on_edge(edge, edge->path_[0]);
+      }
+    default:
+      area = g.find_osm_area(start_id);
+      if (area != nullptr) {
+        return input_pt{area->get_middle(), area};
+      }
+      edge = g.find_osm_edge(start_id);
+      if (edge != nullptr) {
+        return nearest_pt_on_edge(edge, edge->path_[0]);
+      }
+      node = g.find_osm_node(start_id);
+      if (node != nullptr) {
+        return input_pt{node};
+      }
   }
   return {};
 }
@@ -260,27 +296,41 @@ std::vector<input_pt> find_destinations(routing_graph const& g,
   std::vector<input_pt> destinations{};
   area* area;
   edge* edge;
-  input_pt mapped_goal;
+  node* node;
   auto type_it = end_type.begin();
   for (std::int64_t destination_id : destination_ids) {
     switch (*(type_it++)._Ptr) {
       case osm_type::NODE:
-        destinations.emplace_back(input_pt{g.find_osm_node(destination_id)});
+        node = g.find_osm_node(destination_id);
+        if (node != nullptr) {
+          destinations.emplace_back(input_pt{node});
+        }
         break;
       case osm_type::AREA:
         area = g.find_osm_area(destination_id);
-        destinations.emplace_back(input_pt{area->get_middle(), area});
+        if (area != nullptr) {
+          destinations.emplace_back(input_pt{area->get_middle(), area});
+        }
         break;
       case osm_type::EDGE:
         edge = g.find_osm_edge(destination_id);
-        destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+        if (edge != nullptr) {
+          destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+        }
         break;
       default:
-        destinations.emplace_back(input_pt{g.find_osm_node(destination_id)});
         area = g.find_osm_area(destination_id);
-        destinations.emplace_back(input_pt{area->get_middle(), area});
+        if (area != nullptr) {
+          destinations.emplace_back(input_pt{area->get_middle(), area});
+        }
         edge = g.find_osm_edge(destination_id);
-        destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+        if (edge != nullptr) {
+          destinations.emplace_back(nearest_pt_on_edge(edge, edge->path_[0]));
+        }
+        node = g.find_osm_node(destination_id);
+        if (node != nullptr) {
+          destinations.emplace_back(input_pt{node});
+        }
     }
   }
   return destinations;
