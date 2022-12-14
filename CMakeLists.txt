@@ -239,6 +239,34 @@ set_target_properties(ppr-benchmark PROPERTIES CXX_EXTENSIONS OFF)
 target_compile_options(ppr-benchmark PRIVATE ${ppr-compile-flags})
 target_compile_definitions(ppr-benchmark PRIVATE ${ppr-compile-definitions})
 
+################################
+# id-searcher executable
+################################
+file(GLOB_RECURSE ppr-id-searcher-files
+  src/cmd/id-searcher/*.cc
+  src/cmd/benchmark/prog_options.cc
+  src/profiles/parse_search_profile.cc
+)
+add_executable(ppr-id-searcher ${ppr-id-searcher-files})
+target_link_libraries(ppr-id-searcher
+  zlibstatic
+  boost-filesystem
+  ${CMAKE_THREAD_LIBS_INIT}
+  conf
+  ppr-routing
+  cpptoml
+  osmium
+  protozero
+  rapidjson
+)
+if (PPR_MIMALLOC)
+  target_link_libraries(ppr-id-searcher mimalloc-obj)
+endif ()
+target_compile_features(ppr-id-searcher PUBLIC cxx_std_17)
+set_target_properties(ppr-id-searcher PROPERTIES CXX_EXTENSIONS OFF)
+target_compile_options(ppr-id-searcher PRIVATE ${ppr-compile-flags})
+target_compile_definitions(ppr-id-searcher PRIVATE ${ppr-compile-definitions})
+
 
 ################################
 # clang-format check

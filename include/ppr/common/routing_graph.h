@@ -146,6 +146,69 @@ struct routing_graph {
                         area_rtree_size, rtree_opt);
   }
 
+  /*
+   * should only be used if it is unknown of which type the id is
+   * as there is an area, a node and a edge with the given id
+   * this function will return the node -> area -> edge
+   * @param id the osm-id from which you want to know the location
+   * @return the location of the given id
+   */
+  /*std::optional<node> find_osm_id(std::int64_t const& id) const {
+    auto node = find_osm_node(id);
+    if (node.has_value()) {
+      return node;
+    }
+    node = find_osm_edge(id);
+    if (node.has_value()) {
+      return node;
+    }
+    return find_osm_area(id);
+  }*/
+
+  node* find_osm_node(std::int64_t const& id) const {
+    for(auto const& node : data_->nodes_) {
+      if(node->osm_id_ == id) {
+        return node.get();
+      }
+    }
+    return {};
+  }
+
+  edge* find_osm_edge(std::int64_t const& id) const {
+    for(auto const& node : data_->nodes_) {
+      for(auto& out_edge : node->in_edges_) {
+        if(out_edge->info_->osm_way_id_ == id) {
+          return out_edge;
+        }
+      }
+    }
+    return {};
+  }
+
+  area* find_osm_area(std::int64_t const& id) const {
+    /*auto first_a = data_->areas_.begin();
+    auto last_a = data_->areas_.end();
+    for(; first_a != last_a; ++first_a) {*/
+    for(auto& area : data_->areas_) {
+      if (area.osm_id_ == id) {
+        return &area;
+        /*// Which location should be returned when the id of an area is requested? The middle point of an area?
+        int64_t lon = 0, lat = 0, count = 0;
+        for (auto node : area.get_nodes()) {
+          lon += node.location_.x();
+          lat += node.location_.y();
+          ++count;
+        }
+        int32_t lon32 = lon / count;
+        int32_t lat32 = lat / count;
+        return make_location(lon32, lat32);*/
+        // one random point of the area
+        // return first_a->get_nodes()[0].location_;
+      }
+    }
+    return nullptr;
+  }
+
 private:
   void create_edge_rtree(std::string const& filename, std::size_t size,
                          rtree_options rtree_opt) {

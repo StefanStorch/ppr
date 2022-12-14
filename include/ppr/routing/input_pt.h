@@ -17,6 +17,13 @@ struct input_pt {
         from_path_(std::move(from_path)),
         to_path_(std::move(to_path)) {}
 
+  explicit input_pt(node const* node)
+      : input_(node->location_),
+        nearest_pt_(node->location_),
+        nearest_edge_(node->in_edges_[0]),
+        in_area_(nullptr),
+        outside_of_area_(false) {}
+
   explicit input_pt(location input, area const* in_area = nullptr)
       : input_(input),
         nearest_pt_(input),
@@ -40,5 +47,7 @@ struct input_pt {
 std::vector<input_pt> nearest_points(routing_graph const& g,
                                      location const& loc, unsigned max_query,
                                      unsigned max_count, double max_dist);
+
+input_pt nearest_pt_on_edge(edge const* e, location const& loc);
 
 }  // namespace ppr::routing
