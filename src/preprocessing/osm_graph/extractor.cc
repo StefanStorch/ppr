@@ -189,6 +189,8 @@ private:
     return v;
   }
 
+  /* TODO: use node_map_ to find the nodes later
+    * additionally create a new map for ways and relations*/
   osm_graph& graph_;
   std::unordered_map<std::int64_t, struct osm_node*> node_map_;
   std::unordered_set<osmium::object_id_type> const& multipolygon_ways_;
