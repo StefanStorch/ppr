@@ -30,6 +30,8 @@ struct routing_statistics {
   int attempts_ = 0;
   int start_pts_extended_ = 0;
   int destination_pts_extended_ = 0;
+  bool start_is_location = false;
+  std::vector<bool> destination_is_location = {};
   double d_start_pts_ = 0;
   double d_start_pts_extended_ = 0;
   double d_destination_pts_ = 0;

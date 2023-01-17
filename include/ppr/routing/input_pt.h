@@ -20,9 +20,16 @@ struct input_pt {
   explicit input_pt(node const* node)
       : input_(node->location_),
         nearest_pt_(node->location_),
-        nearest_edge_(node->in_edges_[0]),
         in_area_(nullptr),
-        outside_of_area_(false) {}
+        outside_of_area_(false) {
+    if (node->in_edges_.empty()) {
+      if (!node->out_edges_.empty()) {
+        nearest_edge_ = node->out_edges_.at(0).get();
+      }
+    } else {
+      nearest_edge_ = node->in_edges_.at(0);
+    }
+  }
 
   explicit input_pt(location input, area const* in_area = nullptr)
       : input_(input),

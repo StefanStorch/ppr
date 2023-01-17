@@ -118,25 +118,9 @@ struct http_server::impl {
           req, R"({"error": "Missing or invalid start/destination locations"})",
           http::status::bad_request));
     }
-    search_result result;
-    if (r.start_.valid()) {
-      if (r.destination_.valid()) {
-        result = find_routes(graph_, r.start_,
-                             {r.destination_}, r.profile_);
-      } else {
-        result = find_routes(graph_, r.start_, {r.destination_type_},
-                             {r.osm_id_destination_}, r.profile_);
-      }
-    } else {
-      if (r.destination_.valid()) {
-        result = find_routes(graph_, r.osm_id_start_, r.start_type_,
-                             {r.destination_}, r.profile_);
-      } else {
-        result = find_routes(graph_, r.osm_id_start_, r.start_type_,
-                             {r.destination_type_}, {r.osm_id_destination_},
-                             r.profile_);
-      }
-    }
+    search_result result = find_routes(graph_, r.osm_id_start_, r.start_type_, r.start_,
+                                       {r.osm_id_destination_}, {r.destination_type_},
+                                       {r.destination_}, r.profile_);
     return cb(json_response(req, routes_to_route_response(result, r)));
   }
 
