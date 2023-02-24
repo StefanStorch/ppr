@@ -10,6 +10,7 @@
 #include "boost/geometry/index/rtree.hpp"
 
 #include "boost/interprocess/managed_mapped_file.hpp"
+#include "cista/containers/hash_map.h"
 
 #include "ppr/common/area.h"
 #include "ppr/common/data.h"
@@ -131,6 +132,8 @@ struct routing_graph {
                            rtree_options rtree_opt) {
     create_edge_rtree(edge_rtree_file, edge_rtree_size, rtree_opt);
     create_area_rtree(area_rtree_file, area_rtree_size, rtree_opt);
+    create_edge_hash_map();
+    create_area_hash_map();
   }
 
   void prepare_for_routing(std::size_t edge_rtree_size = 1024UL * 1024 * 1024 *
@@ -146,36 +149,45 @@ struct routing_graph {
                         area_rtree_size, rtree_opt);
   }
 
+  // TODO: Nodes komplett raus lassen
   node* find_osm_node(std::int64_t const& id) const {
+    /*if(data_->max_node_id_ < id) { // expecting nodes to be sorted, could be improved upon
+      return {};
+    }
     for(auto const& node : data_->nodes_) {
       if(node->osm_id_ == id) {
         return node.get();
       }
-    }
+      if(node->osm_id_ > id) {
+        return {};
+      }
+    }*/
     return {};
   }
 
   edge* find_osm_edge(std::int64_t const& id) const {
-    for(auto const& node : data_->nodes_) {
-      for(auto const& out_edge : node->out_edges_) {
-        if(out_edge->info_->osm_way_id_ == id) {
-          return out_edge.get();
-        }
-      }
-    }
-    return {};
+    return cista::get_second{}(*edges_.find(id));
   }
 
   area* find_osm_area(std::int64_t const& id) const {
-    for(auto& area : data_->areas_) {
-      if (area.osm_id_ == id) {
-        return &area;
-      }
-    }
-    return nullptr;
+    return cista::get_second{}(*areas_.find(id));
   }
 
 private:
+  void create_edge_hash_map() {
+    for (auto const& node : data_->nodes_) {
+      for (auto const& out_edge : node->out_edges_) {
+        edges_.insert({out_edge->info_->osm_way_id_, out_edge.get()});
+      }
+    }
+  }
+
+  void create_area_hash_map() {
+    for (auto& area : data_->areas_) {
+      areas_.insert({area.osm_id_, &area});
+    }
+  }
+
   void create_edge_rtree(std::string const& filename, std::size_t size,
                          rtree_options rtree_opt) {
     if (edge_rtree_.initialized()) {
@@ -233,6 +245,8 @@ private:
     }
   }
 
+  cista::raw::hash_map<int64_t, edge*, cista::hashing<int64_t>> edges_;
+  cista::raw::hash_map<int64_t, area*, cista::hashing<int64_t>> areas_;
 public:
   routing_graph_data* data_{nullptr};
   cista::buffer data_buffer_;
