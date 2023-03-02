@@ -129,24 +129,28 @@ struct routing_graph {
                            std::string const& area_rtree_file,
                            std::size_t edge_rtree_size,
                            std::size_t area_rtree_size,
-                           rtree_options rtree_opt) {
+                           rtree_options rtree_opt,
+                           bool create_hash = false) {
     create_edge_rtree(edge_rtree_file, edge_rtree_size, rtree_opt);
     create_area_rtree(area_rtree_file, area_rtree_size, rtree_opt);
-    create_edge_hash_map();
-    create_area_hash_map();
+    if (create_hash) {
+      create_edge_hash_map();
+      create_area_hash_map();
+    }
   }
 
   void prepare_for_routing(std::size_t edge_rtree_size = 1024UL * 1024 * 1024 *
                                                          3,
                            std::size_t area_rtree_size = 1024UL * 1024 * 1024 *
                                                          1,
-                           rtree_options rtree_opt = rtree_options::DEFAULT) {
+                           rtree_options rtree_opt = rtree_options::DEFAULT,
+                           bool create_hash = false) {
     std::string edge_rtree_file =
         filename_.empty() ? "routing-graph.ppr.ert" : filename_ + ".ert";
     std::string area_rtree_file =
         filename_.empty() ? "routing-graph.ppr.art" : filename_ + ".art";
     prepare_for_routing(edge_rtree_file, area_rtree_file, edge_rtree_size,
-                        area_rtree_size, rtree_opt);
+                        area_rtree_size, rtree_opt, create_hash);
   }
 
   // TODO: Nodes komplett raus lassen
@@ -166,11 +170,21 @@ struct routing_graph {
   }
 
   edge* find_osm_edge(std::int64_t const& id) const {
-    return cista::get_second{}(*edges_.find(id));
+    auto const& it = edges_.find(id);
+    if (it != end(edges_)) {
+      return cista::get_second{}(*it);
+    } else {
+      return nullptr;
+    }
   }
 
   area* find_osm_area(std::int64_t const& id) const {
-    return cista::get_second{}(*areas_.find(id));
+    auto const& it = areas_.find(id);
+    if (it != end(areas_)) {
+      return cista::get_second{}(*it);
+    } else {
+      return nullptr;
+    }
   }
 
 private:

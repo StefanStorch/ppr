@@ -231,16 +231,19 @@ input_pt find_start(routing_graph const& g, std::int64_t const& start_id,
       if (node != nullptr) {
         return input_pt{node};
       }
+      break;
     case osm_type::AREA:
       area = g.find_osm_area(start_id);
       if (area != nullptr) {
         return input_pt{area->get_middle(), area};
       }
+      break;
     case osm_type::EDGE:
       edge = g.find_osm_edge(start_id);
       if (edge != nullptr) {
         return input_pt{edge->from_};
       }
+      break;
     default:
       area = g.find_osm_area(start_id);
       if (area != nullptr) {
@@ -280,7 +283,7 @@ std::vector<input_pt> find_destinations(routing_graph const& g,
         } else {
           destinations.emplace_back();
         }
-        break;
+        continue;
       case osm_type::AREA:
         area = g.find_osm_area(destination_id);
         if (area != nullptr) {
@@ -288,7 +291,7 @@ std::vector<input_pt> find_destinations(routing_graph const& g,
         } else {
           destinations.emplace_back();
         }
-        break;
+        continue;
       case osm_type::EDGE:
         edge = g.find_osm_edge(destination_id);
         if (edge != nullptr) {
@@ -296,7 +299,7 @@ std::vector<input_pt> find_destinations(routing_graph const& g,
         } else {
           destinations.emplace_back();
         }
-        break;
+        continue;
       default:
         area = g.find_osm_area(destination_id);
         if (area != nullptr) {
