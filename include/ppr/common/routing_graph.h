@@ -172,7 +172,7 @@ struct routing_graph {
   edge* find_osm_edge(std::int64_t const& id) const {
     auto const& it = edges_.find(id);
     if (it != end(edges_)) {
-      return cista::get_second{}(*it);
+      return it->second;
     } else {
       return nullptr;
     }
@@ -181,7 +181,7 @@ struct routing_graph {
   area* find_osm_area(std::int64_t const& id) const {
     auto const& it = areas_.find(id);
     if (it != end(areas_)) {
-      return cista::get_second{}(*it);
+      return it->second;
     } else {
       return nullptr;
     }

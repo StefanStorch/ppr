@@ -167,13 +167,13 @@ search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
   for(int i = 0; i < goals.size(); ++i) {
     if (goals.at(i)) {
       mapped_goals.emplace_back(mapped_pt{goals.at(i).input_, {goals.at(i)}});
-      result.stats_.destination_is_location[i] = false;
+      result.stats_.destination_is_location.emplace_back(false);
     } else {
       mapped_goals.emplace_back(
           destination_locs.at(i),
           nearest_points(g, destination_locs.at(i), initial_max_pt_query,
                               initial_max_pt_count, initial_max_pt_dist));
-      result.stats_.destination_is_location[i] = true;
+      result.stats_.destination_is_location.emplace_back(true);
     }
   }
   auto const t_after_dest = timing_now();
