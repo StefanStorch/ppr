@@ -72,10 +72,13 @@ int main(int argc, char const* argv[]) {
             << rg.data_->areas_.size() << " areas" << std::endl;
 
   std::cout << "Creating r-trees..." << std::endl;
-  rg.prepare_for_routing();
+  rg.prepare_for_routing(1024UL * 1024 * 1024 *
+                         3, 1024UL * 1024 * 1024 *
+                             1, rtree_options::DEFAULT, true);
 
   std::vector<int64_t> ids{391332763, 5327813, 48928244, 3945358660, 4210513525};
   auto start_type = ppr::routing::osm_type::UNKNOWN;
+  auto area = ppr::routing::osm_type::AREA;
   //auto end_type = std::vector{start_type, start_type, start_type};
   //auto end_type2 = std::vector{start_type};
   //auto destination = std::vector{std::int64_t{1091110991}, std::int64_t{967515792}, std::int64_t{4743094}};
@@ -94,6 +97,12 @@ int main(int argc, char const* argv[]) {
   //print_route(response3);
 
   find_locations_by_ids(ids, rg);
+  auto response = find_routes(rg, 5561457, area, make_location(7.6361, 51.9562),
+              {-1, 5561456, 5561458, 5561455}, {start_type, area, area, area},
+              {make_location(7.635715, 51.956566), make_location(7.635925, 51.9568292),
+               make_location(7.635578, 51.9567569), make_location(7.6351845, 51.9565394)},
+              profile,direction,true);
+  print_route(response);
 
   return 0;
 }
