@@ -210,7 +210,6 @@ search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
         mapped_start.second = expanded_start1;
         find_routes(result, mapped_start, mapped_goals, profile, dir);
         if (!all_goals_reached(result)) {
-          auto const orig_start = mapped_start.second;
           // 5th attempt: expand start point
           auto const t_before_expand_start = timing_now();
           mapped_start.second =
@@ -219,28 +218,6 @@ search_result find_routes(routing_graph const&g, std::int64_t const& start_id,
           result.stats_.start_pts_extended_++;
           result.stats_.d_start_pts_extended_ = ms_since(t_before_expand_start);
           find_routes(result, mapped_start, mapped_goals, profile, dir);
-          if (!all_goals_reached(result)) {
-            // 6th attempt: expand goal points
-            auto const expanded_start = mapped_start.second;
-            mapped_start.second = orig_start;
-            auto const t_before_expand_dest = timing_now();
-            for (std::size_t i = 0; i < destination_locs.size(); i++) {
-              if (result.routes_[i].empty()) {
-                mapped_goals[i].second =
-                    nearest_points(g, destination_locs[i], expanded_max_pt_query,
-                                   expanded_max_pt_count, expanded_max_pt_dist);
-                result.stats_.destination_pts_extended_++;
-              }
-            }
-            result.stats_.d_destination_pts_extended_ =
-                ms_since(t_before_expand_dest);
-            find_routes(result, mapped_start, mapped_goals, profile, dir);
-            if (!all_goals_reached(result)) {
-              // 7th attempt: expand start and goal points
-              mapped_start.second = expanded_start;
-              find_routes(result, mapped_start, mapped_goals, profile, dir);
-            }
-          }
         }
       }
     }
